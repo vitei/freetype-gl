@@ -65,7 +65,7 @@ void keyboard( unsigned char key, int x, int y )
 void print_help()
 {
     fprintf( stderr, "Usage: makefont [--help] [--verbose] --font <font file> "
-             "--header <header file> --size <font size> --variable <variable name>\n" );
+             "--header <header file> --size <font size> --variable <variable name> --maxedge <max texture edge size>\n" );
 }
 
 // ------------------------------------------------------------------- main ---
@@ -84,6 +84,7 @@ int main( int argc, char **argv )
     const char * font_filename   = NULL;
     const char * header_filename = NULL;
     const char * variable_name   = "font";
+    int texture_atlus_max_edge = 2048;
     int show_help = 0;
     int verbose_output = 0;
 
@@ -193,6 +194,24 @@ int main( int argc, char **argv )
             continue;
         }
 
+        if ( 0 == strcmp( "--maxedge", argv[arg] ) || 0 == strcmp( "-e", argv[arg] ) )
+        {
+            ++arg;
+
+            errno = 0;
+
+            texture_atlus_max_edge = atoi( argv[arg] );
+
+            if ( errno )
+            {
+                fprintf( stderr, "No valid maximum edge size given.\n" );
+                print_help();
+                exit( 1 );
+            }
+
+            continue;
+        }
+
         if ( 0 == strcmp( "--verbose", argv[arg] ) || 0 == strcmp( "-v", argv[arg] )  )
         {
             ++arg;
@@ -241,25 +260,59 @@ int main( int argc, char **argv )
         exit( 1 );
     }
 
-    texture_atlas_t * atlas = texture_atlas_new( 128, 128, 1 );
-    texture_font_t  * font  = texture_font_new_from_file( atlas, font_size, font_filename );
+    // FIXME, choose better default values for these?
+    int texture_atlus_width = 128;
+    int texture_atlus_height = 128;
+
+    texture_atlas_t * atlas = 0;
+    texture_font_t  * font = 0;
 
     glutInit( &argc, argv );
-    glutInitWindowSize( atlas->width, atlas->height );
+    glutInitWindowSize( texture_atlus_max_edge, texture_atlus_max_edge );
     glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
     glutCreateWindow( "Freetype OpenGL" );
     glutReshapeFunc( reshape );
     glutDisplayFunc( display );
     glutKeyboardFunc( keyboard );
 
-    size_t missed = texture_font_load_glyphs( font, font_cache );
+    do
+    {
+        if( atlas )
+        {
+            texture_atlas_delete( atlas );
+        }
+
+        if( font )
+        {
+            texture_font_delete( font );
+        }
+
+        if( texture_atlus_height > texture_atlus_max_edge )
+        {
+            fprintf( stderr, "Maximum texture edge size of %d exceeded.\n", texture_atlus_max_edge );
+            exit( 1 );
+        }
+
+        atlas = texture_atlas_new( texture_atlus_width, texture_atlus_height, 1 );
+        font  = texture_font_new_from_file( atlas, font_size, font_filename );
+
+        if( texture_atlus_width == texture_atlus_height )
+        {
+            texture_atlus_height <<= 1;
+        }
+        else
+        {
+            texture_atlus_width <<= 1;
+		}
+    }
+    while( texture_font_load_glyphs( font, font_cache ) );
 
     if(verbose_output)
     {
         wprintf( L"Font filename              : %s\n", font_filename );
         wprintf( L"Font size                  : %.1f\n", font_size );
         wprintf( L"Number of glyphs           : %ld\n", wcslen(font_cache) );
-        wprintf( L"Number of missed glyphs    : %ld\n", missed );
+        // wprintf( L"Number of missed glyphs    : %ld\n", missed );
         wprintf( L"Texture size               : %ldx%ldx%ld\n",
                  atlas->width, atlas->height, atlas->depth );
         wprintf( L"Texture occupancy          : %.2f%%\n", 
