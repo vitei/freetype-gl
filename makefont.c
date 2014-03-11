@@ -64,7 +64,7 @@ void keyboard( unsigned char key, int x, int y )
 // ------------------------------------------------------------- print help ---
 void print_help()
 {
-    fprintf( stderr, "Usage: makefont [--help] --font <font file> "
+    fprintf( stderr, "Usage: makefont [--help] [--verbose] --font <font file> "
              "--header <header file> --size <font size> --variable <variable name>\n" );
 }
 
@@ -85,6 +85,7 @@ int main( int argc, char **argv )
     const char * header_filename = NULL;
     const char * variable_name   = "font";
     int show_help = 0;
+    int verbose_output = 0;
 
     for ( arg = 1; arg < argc; ++arg )
     {
@@ -192,6 +193,15 @@ int main( int argc, char **argv )
             continue;
         }
 
+        if ( 0 == strcmp( "--verbose", argv[arg] ) || 0 == strcmp( "-v", argv[arg] )  )
+        {
+            ++arg;
+
+            verbose_output = 1;
+
+            continue;
+        }
+
         fprintf( stderr, "Unknown parameter %s\n", argv[arg] );
         print_help();
         exit( 1 );
@@ -244,17 +254,20 @@ int main( int argc, char **argv )
 
     size_t missed = texture_font_load_glyphs( font, font_cache );
 
-    wprintf( L"Font filename              : %s\n", font_filename );
-    wprintf( L"Font size                  : %.1f\n", font_size );
-    wprintf( L"Number of glyphs           : %ld\n", wcslen(font_cache) );
-    wprintf( L"Number of missed glyphs    : %ld\n", missed );
-    wprintf( L"Texture size               : %ldx%ldx%ld\n",
-             atlas->width, atlas->height, atlas->depth );
-    wprintf( L"Texture occupancy          : %.2f%%\n", 
-            100.0*atlas->used/(float)(atlas->width*atlas->height) );
-    wprintf( L"\n" );
-    wprintf( L"Header filename            : %s\n", header_filename );
-    wprintf( L"Variable name              : %s\n", variable_name );
+    if(verbose_output)
+    {
+        wprintf( L"Font filename              : %s\n", font_filename );
+        wprintf( L"Font size                  : %.1f\n", font_size );
+        wprintf( L"Number of glyphs           : %ld\n", wcslen(font_cache) );
+        wprintf( L"Number of missed glyphs    : %ld\n", missed );
+        wprintf( L"Texture size               : %ldx%ldx%ld\n",
+                 atlas->width, atlas->height, atlas->depth );
+        wprintf( L"Texture occupancy          : %.2f%%\n", 
+                100.0*atlas->used/(float)(atlas->width*atlas->height) );
+        wprintf( L"\n" );
+        wprintf( L"Header filename            : %s\n", header_filename );
+        wprintf( L"Variable name              : %s\n", variable_name );
+    }
 
 
     size_t texture_size = atlas->width * atlas->height *atlas->depth;
